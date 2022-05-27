@@ -63,7 +63,7 @@ fail as well, but the anti-cheat code doesn't seem to be bothered by it.
 
 This is what `aionfix.c` is for.
 
-I've also implemented experimental WINE patches that bypass the ptrace()
+I've also implemented [experimental WINE patches](https://github.com/pinkfluid/aionfix/tree/master/wine_patches) that bypass the ptrace()
 codepath when a process calls `NtReadVirtualMemory()` to read its own memory
 (instead it reads the memory directly). This gives the best overall performance,
 but requires a custom WINE build.
