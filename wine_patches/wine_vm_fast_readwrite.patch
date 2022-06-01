@@ -1,0 +1,68 @@
+diff --git a/dlls/ntdll/unix/virtual.c b/dlls/ntdll/unix/virtual.c
+index 6ecca9cb98a..00ab3c11b4d 100644
+--- a/dlls/ntdll/unix/virtual.c
++++ b/dlls/ntdll/unix/virtual.c
+@@ -4839,7 +4839,18 @@ NTSTATUS WINAPI NtReadVirtualMemory( HANDLE process, const void *addr, void *buf
+ {
+     NTSTATUS status;
+ 
+-    if (virtual_check_buffer_for_write( buffer, size ))
++    if (!virtual_check_buffer_for_write( buffer, size ))
++    {
++        status = STATUS_ACCESS_VIOLATION;
++        size = 0;
++    }
++    else if (GetCurrentProcess() == process)
++    {
++        SIZE_T rsz;
++        rsz = virtual_uninterrupted_read_memory(addr, buffer, size);
++        status = (rsz < size) ? STATUS_PARTIAL_COPY : STATUS_SUCCESS;
++    }
++    else
+     {
+         SERVER_START_REQ( read_process_memory )
+         {
+@@ -4850,11 +4861,6 @@ NTSTATUS WINAPI NtReadVirtualMemory( HANDLE process, const void *addr, void *buf
+         }
+         SERVER_END_REQ;
+     }
+-    else
+-    {
+-        status = STATUS_ACCESS_VIOLATION;
+-        size = 0;
+-    }
+     if (bytes_read) *bytes_read = size;
+     return status;
+ }
+@@ -4869,7 +4875,18 @@ NTSTATUS WINAPI NtWriteVirtualMemory( HANDLE process, void *addr, const void *bu
+ {
+     NTSTATUS status;
+ 
+-    if (virtual_check_buffer_for_read( buffer, size ))
++    if (!virtual_check_buffer_for_read( buffer, size ))
++    {
++        status = STATUS_PARTIAL_COPY;
++        size = 0;
++    }
++    else if (GetCurrentProcess() == process)
++    {
++        SIZE_T wsz;
++        wsz = virtual_uninterrupted_write_memory(addr, buffer, size);
++        status = (wsz < size) ? STATUS_PARTIAL_COPY : STATUS_SUCCESS;
++    }
++    else
+     {
+         SERVER_START_REQ( write_process_memory )
+         {
+@@ -4880,11 +4897,6 @@ NTSTATUS WINAPI NtWriteVirtualMemory( HANDLE process, void *addr, const void *bu
+         }
+         SERVER_END_REQ;
+     }
+-    else
+-    {
+-        status = STATUS_PARTIAL_COPY;
+-        size = 0;
+-    }
+     if (bytes_written) *bytes_written = size;
+     return status;
+ }
